@@ -15,7 +15,7 @@ class Config:
     fallback_api_key: str = ""
 
     # Retrieval
-    similarity_threshold: float = 0.25   # refusal gate — cosine similarity (BGE-M3 range: 0.1–0.6)
+    similarity_threshold: float = 0.27   # refusal gate — cosine similarity (BGE-M3 range: 0.1–0.6)
     top_k: int = 8                        # chunks passed to LLM
     bm25_candidates: int = 20             # BM25 candidates before RRF
     dense_candidates: int = 20            # dense candidates before RRF

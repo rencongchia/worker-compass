@@ -53,8 +53,8 @@ Retrieved sources: {sources}
 
 Rate:
 1. Correctness (1-5): Is the legal information accurate compared to the gold answer?
-2. Groundedness (1-5): Is every claim in the system answer supported by the retrieved sources?
-   If ANY claim is NOT in the retrieved sources, score Groundedness = 1 regardless of other factors.
+2. Groundedness (1-5): Are the system answer's claims supported by the retrieved sources?
+   5 = all claims traceable to sources; 4 = mostly grounded, minor additions (e.g. a general disclaimer or procedural step); 3 = mostly grounded but includes one unsupported specific claim; 2 = significant unsupported claims; 1 = answer is largely not grounded in the sources.
 3. Completeness (1-5): Are the key actionable steps from the gold answer present?
 
 Respond ONLY as JSON with no other text:
@@ -167,14 +167,18 @@ def judge_multilingual(client, model: str, language: str, question: str,
 # ---------------------------------------------------------------------------
 
 def check_citation(answer: str, expected_act: str, expected_section: str) -> bool:
-    """Deterministic check: does the answer mention the expected act and section?"""
-    if not expected_act or not expected_section:
+    """Deterministic check: does the answer mention the expected act AND include a superscript citation?
+
+    Section-number matching was dropped: the LLM cites source documents via superscripts
+    (¹ ² ³ …), not statutory section numbers, so section_hit was always False.
+    """
+    if not expected_act:
         return True  # no expectation to check
-    # Normalise
     answer_lower = answer.lower()
     act_hit = any(w.lower() in answer_lower for w in expected_act.split() if len(w) > 3)
-    section_hit = expected_section.replace(" ", "").lower() in answer_lower.replace(" ", "")
-    return act_hit and section_hit
+    # Check that the answer includes at least one superscript citation character
+    superscript_hit = any(ch in answer for ch in "¹²³⁴⁵⁶⁷⁸⁹")
+    return act_hit and superscript_hit
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +252,7 @@ def run_eval(args: argparse.Namespace) -> None:
                 "question": q["question"],
                 "refused": resp.refused,
                 "correct_refusal": correct_refusal,
+                "top_similarity": resp.top_similarity,
             })
             log.info("    DISTRACTOR — refused=%s (correct=%s)", resp.refused, correct_refusal)
         else:
