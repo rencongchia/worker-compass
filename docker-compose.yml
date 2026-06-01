@@ -1,0 +1,25 @@
+services:
+  workercompass:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONPATH=/app
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-llama-3.3-70b-versatile}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      - FALLBACK_MODEL=${FALLBACK_MODEL:-qwen/qwen3-next-80b-a3b-instruct:free}
+      - FALLBACK_BASE_URL=${FALLBACK_BASE_URL:-https://openrouter.ai/api/v1}
+      - SIMILARITY_THRESHOLD=${SIMILARITY_THRESHOLD:-0.25}
+      - TRANSFORMERS_VERBOSITY=error
+    volumes:
+      # BGE-M3 model weights (~2.2 GB). Pre-download recommended:
+      #   pip install huggingface_hub && huggingface-cli download BAAI/bge-m3 --local-dir ./models
+      # If ./models is empty, weights are downloaded automatically on the first query, but would take startup time
+      - ./models:/app/models
+      - ./app:/app/app
+      # Persist the LanceDB index across container restarts
+      - ./corpus/lancedb:/app/corpus/lancedb
+      # Persist eval results
+      - ./eval/results:/app/eval/results

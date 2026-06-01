@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+
+# uv
+uv.lock
+
+# Corpus (raw scraped content — not committed; chunks + indexes ARE committed as pre-built artifacts)
+corpus/raw/*
+!corpus/raw/.gitkeep
+
+# Eval outputs
+eval/results/*
+!eval/results/.gitkeep
+
+# Env
+.env
+*.env
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# misc
+*.pdf
+models/
