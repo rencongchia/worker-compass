@@ -27,6 +27,7 @@ import json
 import logging
 import random
 import sys
+import time
 from datetime import date
 from pathlib import Path
 
@@ -99,18 +100,26 @@ def bootstrap_ci(values: list[float], n_boot: int = 1000, ci: float = 0.95) -> t
 # LLM judge calls
 # ---------------------------------------------------------------------------
 
-def _judge_call(client, model: str, prompt: str) -> dict:
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=300,
-        temperature=0,
-    )
-    text = resp.choices[0].message.content.strip()
-    # Strip markdown code fences if present
-    if text.startswith("```"):
-        text = text.split("```")[1].lstrip("json").strip()
-    return json.loads(text)
+def _judge_call(client, model: str, prompt: str, _retries: int = 3) -> dict:
+    from openai import RateLimitError
+    for attempt in range(_retries):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=300,
+                temperature=0,
+            )
+            text = resp.choices[0].message.content.strip()
+            if text.startswith("```"):
+                text = text.split("```")[1].lstrip("json").strip()
+            return json.loads(text)
+        except RateLimitError:
+            if attempt < _retries - 1:
+                log.warning("Judge hit 429; sleeping 60s before retry %d/%d …", attempt + 2, _retries)
+                time.sleep(60)
+            else:
+                raise
 
 
 def judge_answer(client, model: str, question: str, gold: str,
@@ -241,7 +250,7 @@ def run_eval(args: argparse.Namespace) -> None:
     for q in questions:
         qid = q["id"]
         log.info("  %s: %s", qid, q["question"][:60])
-
+        time.sleep(2)  # stay under 30 RPM on Groq free tier
         resp = agent.run(q["question"], "en")
 
         if q["is_distractor"]:
@@ -305,7 +314,7 @@ def run_eval(args: argparse.Namespace) -> None:
         src_id = probe["source_question_id"]
         gold = gold_map.get(src_id, "")
         log.info("  %s (%s): %s", probe["probe_id"], lang, probe["question"][:50])
-
+        time.sleep(2)  # stay under 30 RPM
         resp = agent.run(probe["question"], lang)
 
         ml_judge = {"faithfulness": 0, "fluency": 0}
